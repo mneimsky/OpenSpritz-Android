@@ -126,7 +126,7 @@ public class SpritzFragment extends Fragment {
 
     /**
      * Temporarily fade in the Chapter label.
-     * Used when user crosses a chapter boundary.
+     * Used when user crosses a chapter boundary
      */
     private void peekChapter() {
         mChapterView.setVisibility(View.VISIBLE);
@@ -290,7 +290,8 @@ public class SpritzFragment extends Fragment {
 
         // ACTION_OPEN_DOCUMENT is the new API 19 action for the Android file manager
         Intent intent;
-        if (Build.VERSION.SDK_INT >= 19) {
+        //Hack, no such thing as Android File Manager on Glass?
+        if (Build.VERSION.SDK_INT > 19) {
             intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         } else {
             intent = new Intent(Intent.ACTION_GET_CONTENT);

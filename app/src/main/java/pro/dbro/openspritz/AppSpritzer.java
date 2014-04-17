@@ -133,11 +133,18 @@ public class AppSpritzer extends Spritzer {
         }
     }
 
-    private void printNextChapter() {
+    public void printNextChapter() {
         setText(loadCleanStringFromChapter(mChapter++));
         saveState();
         if (VERBOSE)
             Log.i(TAG, "starting next chapter: " + mChapter + " length " + mDisplayWordList.size());
+    }
+
+    public void printLastChapter() {
+        setText(loadCleanStringFromChapter(mChapter--));
+        saveState();
+        if (VERBOSE)
+            Log.i(TAG, "starting previous chapter: " + mChapter + " length " + mDisplayWordList.size());
     }
 
     private String loadCleanStringFromChapter(int chapter) {

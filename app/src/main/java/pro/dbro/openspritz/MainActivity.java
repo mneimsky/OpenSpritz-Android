@@ -12,29 +12,29 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
-
+import android.view.GestureDetector;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
-
 import pro.dbro.openspritz.events.ChapterSelectRequested;
 import pro.dbro.openspritz.events.ChapterSelectedEvent;
-import pro.dbro.openspritz.events.WpmSelectedEvent;
 import pro.dbro.openspritz.formats.SpritzerMedia;
 
-public class MainActivity extends ActionBarActivity implements View.OnSystemUiVisibilityChangeListener, WpmDialogFragment.OnWpmSelectListener {
+public class MainActivity extends ActionBarActivity implements View.OnSystemUiVisibilityChangeListener, WpmDialogFragment.OnWpmSelectListener, GestureDetector.OnGestureListener  {
     private static final String TAG = "MainActivity";
     public static final String SPRITZ_FRAG_TAG = "spritzfrag";
     private static final String PREFS = "ui_prefs";
     private static final int THEME_LIGHT = 0;
     private static final int THEME_DARK = 1;
-
+    private GestureDetector gestureDetector;
     private int mWpm;
     private Bus mBus;
+    private static final int SWIPE_MIN_DISTANCE = 100;
+    private static final int SWIPE_THRESHOLD_VELOCITY = 8000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +48,8 @@ public class MainActivity extends ActionBarActivity implements View.OnSystemUiVi
                 setTheme(R.style.Dark);
                 break;
         }
+        gestureDetector = new GestureDetector(this, this);
+
         super.onCreate(savedInstanceState);
         setupActionBar();
         setContentView(R.layout.activity_main);
@@ -101,7 +103,98 @@ public class MainActivity extends ActionBarActivity implements View.OnSystemUiVi
 
     }
 
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
+        return true;
+    }
 
+    @Override
+    public void onLongPress(MotionEvent e) {
+        Log.d("Gesture Example", "onLongPress");
+    }
+
+    @Override
+    public void onShowPress(MotionEvent e) {
+        Log.d("Gesture Example", "onShowPress");
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+        Log.d("Gesture Example", "onDown");
+        return true;
+    }
+    public boolean onScroll(MotionEvent start, MotionEvent finish, float distanceX, float distanceY) {
+        SpritzFragment sf = (SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG);
+        if (((SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG)).getSpritzer() != null) {
+            if (finish.getX() > start.getX()) {
+                Log.d("Event", "On Scroll Forward");
+                boolean shouldSendClick = false;
+                if (!sf.getSpritzer().isPlaying()) {
+                    shouldSendClick = true;
+                }
+
+                if (shouldSendClick) {
+                    sf.getSpritzView().performClick();
+                }
+
+            } else {
+                Log.d("Event", "On Scroll Backward");
+                boolean shouldSendClick = false;
+                if (sf.getSpritzer().isPlaying()) {
+                    shouldSendClick = true;
+                }
+
+                if (shouldSendClick) {
+                    sf.getSpritzView().performClick();
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e) {
+        openOptionsMenu();
+        return true;
+    }
+    @Override
+    public boolean onFling(MotionEvent start, MotionEvent finish, float velocityX, float velocityY) {
+        try {
+            SpritzFragment frag = getSpritzFragment();
+            float totalXTraveled = finish.getX() - start.getX();
+            float totalYTraveled = finish.getY() - start.getY();
+            if (Math.abs(totalXTraveled) > Math.abs(totalYTraveled)) {
+                if (Math.abs(totalXTraveled) > SWIPE_MIN_DISTANCE && Math.abs(velocityX) > SWIPE_THRESHOLD_VELOCITY) {
+                    if (totalXTraveled > 10) {
+                        frag.chooseMedia();
+                        Log.d("Event", "On Fling Forward");
+                        ((SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG)).getSpritzer().printNextChapter();
+                        ((SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG)).updateMetaUi();
+
+                    } else {
+                        Log.d("Event", "On Fling Backward");
+                        ((SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG)).getSpritzer().printLastChapter();
+                        ((SpritzFragment) getSupportFragmentManager().findFragmentByTag(SPRITZ_FRAG_TAG)).updateMetaUi();
+                    }
+                }
+            } else {
+                if (Math.abs(totalYTraveled) > SWIPE_MIN_DISTANCE && Math.abs(velocityY) > SWIPE_THRESHOLD_VELOCITY) {
+                    if(totalYTraveled > 0) {
+                        Log.d("Event", "On Fling Down");
+                    } else {
+                        Log.d("Event", "On Fling Up");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+
+/*
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // tap
@@ -145,6 +238,8 @@ public class MainActivity extends ActionBarActivity implements View.OnSystemUiVi
         }
         return false;
     }
+*/
+
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -199,15 +294,6 @@ public class MainActivity extends ActionBarActivity implements View.OnSystemUiVi
             getSpritzFragment().chooseMedia();
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Subscribe
-    public void onWpmSelected(WpmSelectedEvent event) {
-        if (getSpritzFragment() != null) {
-            getSpritzFragment().getSpritzer()
-                    .setWpm(event.getWpm());
-        }
-        mWpm = event.getWpm();
     }
 
     private void applyDarkTheme() {
